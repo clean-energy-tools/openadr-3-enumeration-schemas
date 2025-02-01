@@ -14,8 +14,8 @@ My (David Herron) current task towards adoption of these schemas is giving advic
 Online         | PDF | Description
 ---------------|-----|------------------
 [Recommended Implementation for utilizing enumeration schemas in the OpenADR RI](./documents/RI-Implementation.md) | [PDF](./PDF/RI-Implementation.pdf) | Discusses how a VEN or VTN should implement data validation of OpenADR 3 objects, and specifically validating the values covered by the enumeration tables
-[RI testing that enumerated values are correct](./documents/RI-Testing-Enumerated-Values.md) | PDF | Discusses how, after implementing data validation in the RI, the test suite should be extended for to ensure that an OpenADR implementation correctly validates correct and incorrect enumerated values
-[Considering extensions to enumeration tables using Schema files](./documents/Extensions-Enumerations.md) | PDF | Discusses how the existence of JSON Schemas for the enumeration tables opens the door to private extensions to those tables, and concretely communicating such extensions among partner organizations.
+[RI testing that enumerated values are correct](./documents/RI-Testing-Enumerated-Values.md) | [PDF](./PDF/RI-Testing-Enumerated-Values.pdf) | Discusses how, after implementing data validation in the RI, the test suite should be extended for to ensure that an OpenADR implementation correctly validates correct and incorrect enumerated values
+[Considering extensions to enumeration tables using Schema files](./documents/Extensions-Enumerations.md) | [PDF](./PDF/Extensions-Enumerations.pdf) | Discusses how the existence of JSON Schemas for the enumeration tables opens the door to private extensions to those tables, and concretely communicating such extensions among partner organizations.
 
 ## Call for Collaboration
 
