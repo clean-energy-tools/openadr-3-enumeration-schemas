@@ -2,36 +2,75 @@
 
 Written by: David Herron - Evoke Systems - <david@davidherron.com> or <david.herron@evokesystems.com>
 
-Date: February 1, 2025
+Date: February 3, 2025
 
 ## Introduction
 
 The OpenADR 3.x Reference Implementation (RI) serves as an example for other OpenADR VEN and VTN implementors.
 
-The enumeration schemas are intended to assist OpenADR 3.x implementors (both VTN and VEN) with validating the contents of valuesMap objects and other uses of the enumeration tables in Definition.md.  Those enumerations describe the allowed values for the fields corresponding to each table.  In most cases the enumeration tables describe valuesMap object contents.
+The enumeration schemas are intended to assist OpenADR 3.x implementors (both VTN and VEN) to validate the contents of data fields whose values are listed in the enumeration tables in Definition.md.  Those enumerations describe the allowed values for the fields corresponding to each table.  Primarily, the enumeration tables describe certain `valuesMap` array contents.
 
-The schema files are written in JSON Schema format.  For the enumeration tables corresponding to a valuesMap - such as the payloads table in a Report - the payloads object is a valuesMap.  Remember that valuesMap entries are a _type_ name and a _values_ array.  Each entry in the schema is keyed with the _type_ name, and its contents describe the valid data in the _values_ array.
+The schema files are written in JSON Schema format.  For the enumeration tables corresponding to a `valuesMap` - such as the payloads table in a Report - the payloads field is a `valuesMap`.  Remember that a `valuesMap` is an array of objects with a _type_ name and a _values_ array.  The `valuesMap` object is structured like so:
 
-These schema files serve several purposes:
+<!-- ![](img/valuesMap-Definition.png) -->
+
+<diagrams-plantuml output-file="img/valuesMapDefinition.png" tpng>
+@startuml
+
+    title "Figure 1. valuesMap definition"
+
+    class valuesMap {
+    }
+    
+    class valuesMapItem {
+        String type
+        Object[] values
+    }
+
+
+    class valuesArrayItem {
+    }
+
+    valuesMap "0" *-- "many" valuesMapItem : Contains
+    
+    valuesMapItem::values "0" *-- "many" valuesArrayItem
+    
+    note right of valuesMapItem
+       The value for "type" comes is one of the names
+       in an enumeration table.
+       
+       The allowed data in "values" is described by
+       the text in the enumeration table.
+    end note
+    
+    note right of valuesArrayItem
+        This is anyOf integer, number, string, boolean, or Point.
+    end note
+    
+@enduml
+</diagrams-plantuml>
+
+It is important for the security and reliability of OpenADR, that all data items must be validated.  For the OpenADR protocol, the schema definitions in the YAML specification serves for generating data validation functions.  For the data described by the enumeration tables, the enumeration schema files are meant to serve two purposes:
 
 1. They concretely define the values described by the enumeration tables.
-2. They allow autogeneration of data types.
-3. They allow autogeneration of data validation.
+1. They allow autogeneration of data validation.
+
+Therefore, the use of the enumeration schemas is within the context of data validation within OpenADR VEN or VTN implementations.
 
 It is recommended that the best data validation implementation is at the boundaries of the VEN or VTN.  That means:
 
 * VEN
-    * Where it receives a response from a VTN, have data validation for the whole object, and data validation for each valuesMap
-    * Where it sends data to a VTN, have data validation for the whole object, and data validation for each valuesMap
+    * Where it receives a response from a VTN, have data validation for the whole object, and data validation for each field described in an enumeration table
+    * Where it sends data to a VTN, have data validation for the whole object, and data validation for each field described in an enumeration table
 * VTN
-    * Where it receives a request from a VEN, have data validation for the whole object, and data validation for each valuesMap
-    * Where it sends responses to a VEN, have data validation for the whole object, and data validation for each valuesMap
-    * Where it sends notifications, have data validation for the whole object, and data validation for each valuesMap
+    * Where it receives a request from a VEN, have data validation for the whole object, and data validation for each field described in an enumeration table
+    * Where it sends responses to a VEN, have data validation for the whole object, and data validation for each field described in an enumeration table
+    * Where it sends notifications, have data validation for the whole object, and data validation for each field described in an enumeration table
 
 This envisions data types and data validation generated in two areas:
 
-1. Each OpenADR 3 schema component (`openadr3.yml#/components/schemas`) in the OpenADR spec defines an object type.  There should be a data type declaration, and a data validation function.
-2. Each enumeration schema component (`TABLE-NAME.schema.json#/definitions`) defines the allowed structure of the values array for each type of valuesMap entry.  There should be a data type declaration and a data validation function.
+1. Each OpenADR 3 schema component (`openadr3.yml#/components/schemas`) in the OpenADR spec defines an object type.  For each, the implementation should include a type declaration, and a data validation function, both of which should be auto-generated.
+2. Each enumeration schema component (`TABLE-NAME.schema.json#/definitions`) defines the allowed content for the field described by the enumeration table.  For the case of `valuesMap` arrays, it is describing the allowed content of the `valuesMapItem.values` array.  For each, the implementation should include a data validation function.  Additionally, the implementation should include a function which, for all `valuesMapItems` in a `valuesMap`, uses the correct validation function for that `valuesMapItem`.  The validation function is chosen by the `type` value.
 
 ## Concrete example `POST /events`
 
@@ -81,11 +120,11 @@ export type EventRequest = {
 };
 ```
 
-Type declarations like this can be generated from the YAML specification.  Such tools should generate a similar type declaration for all schema entries in `openadr3.yml#/components/schemas`.  Such type declarations help the IDE help the coder know how to structure objects.
+Type declarations like this can be generated from the YAML specification.  Such tools should generate a similar type declaration for all schema entries in `openadr3.yml#/components/schemas`.
 
-Data type validation functions can also be autogenerated.
+Data type validation functions can also be autogenerated.  Such a function is given an object of unknown type, and inspects its characteristics to show `true`/`false` whether it is, or is not, of the expected type.
 
-The task is that the VEN or VTN will receive an object, or send an object, and it must validate that the object is actually what it's supposed to be.
+For a communications protocol, like OpenADR, the software receives data from the remote software, and before acting on that data it must validate that the object is actually what it's supposed to be.
 
 Data validation functions should have a signature like this, one for each data type:
 
@@ -95,7 +134,35 @@ isDataTypeName(data: any): boolean
 
 This is roughly TypeScript notation for a function that accepts any kind of data object.  In TypeScript, the type `any` means the variable could be of any type.  Another option is to use the `unknown` type instead.  The function is to return a `true`/`false` indicating whether the object matches that data type.  In TypeScript, this is called a [_Type Predicate_](https://www.typescriptlang.org/docs/handbook/2/narrowing.html#using-type-predicates), which is a way of helping the compiler understand the actual type of an object.
 
-Now we can discuss what a boundary function should look like.  Consider the `createEvent` handler function, which is declared in the YAML as handling `POST /events`:
+Generally speaking a boundary function does this:
+
+<diagrams-plantuml output-file="img/boundaryFunctionOverview.png" tpng>
+@startuml
+
+    title "Figure 2. OpenADR event handler validation"
+
+    start
+    
+    if (requestParametersOrBodyAreNotCorrectType) then
+        #pink:Problem;
+        stop
+    endif
+    
+    if (BusinessLogicFails) then
+        #pink:Problem;
+        stop
+    endif
+    
+    #lightgreen:Return success;
+    
+    stop
+
+@enduml
+</diagrams-plantuml>
+
+So long as handler functions make data validation their first step, the rest of the VEN or VTN implementation has certainty that it has correct data.
+
+Consider the `createEvent` handler function, which is declared in the YAML as handling `POST /events`:
 
 ```js
 // Server createEvent handler.
@@ -132,9 +199,9 @@ function isRequestEvent(data: any): boolean {
 
     // Next, Check the enumerated values
     if (!checkTargets(reqEvent.targets)
-     || checkReportDescriptors(reqEvent.reportDescriptors)
-     || checkPayloadDescriptors(reqEvent.payloadDescriptors)
-     || checkEventIntervalPayloads(reqEvent.intervals)) {
+     || !checkReportDescriptors(reqEvent.reportDescriptors)
+     || !checkPayloadDescriptors(reqEvent.payloadDescriptors)
+     || !checkEventIntervalPayloads(reqEvent.intervals)) {
         return false;
     }
     return true;
@@ -143,11 +210,11 @@ function isRequestEvent(data: any): boolean {
 
 In the `isRequestEvent` function, it's using both the generated validation function, and additional functions to check the valuesMap entries for validity.
 
-In this case, it is posited that the Joi validation framework be used, and that a Joi schema is autogenerated from the YAML specification.
+In this case, the `isJoiRequestEvent` function refers to the Joi validation framework.  There is a tool for autogenerating Joi validation functions which can be used in this way.  The other functions named here will check the named fields against the corresponding schema definitions.
 
-For every programming platform, surely there exists tools for autogenerating data types and data validation functions from OpenAPI specifications.
+For every programming platform, surely there exists tools for autogenerating data types and data validation functions from OpenAPI or JSON Schema specifications.
 
-## Validating a valuesMap with schema-derived validator functions
+## Validating a `valuesMap` with schema-derived validator functions
 
 Let's consider one entry from `event-interval-payloads.schema.yaml`:
 
@@ -168,18 +235,36 @@ Let's consider one entry from `event-interval-payloads.schema.yaml`:
             maximum: 3
 ```
 
-`SIMPLE` is one entry in the enumerations table for event payload descriptors.  The description tells us the `values` array is to have one entry, an integer with a value between `0` and `3` inclusive.
-
-The schema describes an array with those characteristics.
+`SIMPLE` is one entry in the enumerations table for event payload descriptors.  The description tells us the `values` array is to have one entry, an integer with a value between `0` and `3` inclusive.  The schema describes an array with those characteristics.
 
 Each valuesMap will have a list of entries with a _type_ and a _values_ array.  The _type_ values will almost certainly be different for each valuesMap entry.
 
-Therefore the validation of a valuesMap must validate each entry with a validation function corresponding to the _type_ value.
+<diagrams-plantuml output-file="img/validatingValuesMap.png" tpng>
+@startuml
 
-Therefore, validating an OpenADR valuesMap in a given programming language requires:
+    title "Figure 3. Process for validating a valuesMap for an enumerated field"
+
+    start
+
+    while (another item in valuesMap?)
+        :Lookup validation function for "type";
+        :Validate "values" array by that function;
+        if (item does not validate) then (fail)
+            #pink:Problem;
+            stop
+        else (try next)
+        endif
+    endwhile
+    
+    #lightgreen:Success;
+
+@enduml
+</diagrams-plantuml>
+
+Therefore, validating an OpenADR `valuesMap` in a given programming language requires:
 
 * Auto-generating or hand-coding a validation function for each _type_ value
-* A valuesMap validation function which steps through the array, invoking the correct validation for each valuesMap entry
+* A `valuesMap` validation function which steps through the array, invoking the correct validation for each `valuesArrayItem` entry.
 
 ## Concrete example - `EventRequest`
 
@@ -245,5 +330,9 @@ function checkEventIntervalPayloads(intervals) {
     return true;
 }
 ```
+
+Validating the targets array, in `checkTargets`, will follow a similar pattern.  It will read the corresponding schema file, generate validator functions from the schema, and have a similar function.
+
+For `checkReportDescriptors` and `checkPayloadDescriptors` the task is a little simpler, since it only needs to verify the type name against the schema file.
 
 

@@ -2,7 +2,7 @@
 
 Written by: David Herron - Evoke Systems - <david@davidherron.com> or <david.herron@evokesystems.com>
 
-Date: February 1, 2025
+Date: February 3, 2025
 
 ## Introduction
 
@@ -12,7 +12,7 @@ In Definition.md, we have several enumeration tables describing certain values t
 
 This paper focuses on how the RI and the test suite should validate conformance with the OpenADR protocol.
 
-We start from assuming that the RI VTN and VEN implementations will incorporate the schema files, and utilize auto-generated validation functions in a manner similar to what is described.  Obviously the tools used on Node.js/TypeScript do not apply to the RI which is implemented in Python.
+We start from assuming that the RI VTN and VEN implementations will incorporate the schema files, and utilize auto-generated validation functions in a manner similar to what is described.
 
 By having implemented data validation for the values corresponding to the enumeration tables the RI will exhibit this beavior:
 
@@ -29,32 +29,124 @@ There is a specification - such as the Java APIs or the OpenADR 3.x protocol - a
 
 Therefore the compliance tests for OpenADR must exercise every API endpoint as well as ensure that data is correctly structured.  The correctly structured data includes the objects whose content is defined in the enumeration tables.
 
-## Testing a VTN for compliant behavior on enumerated values
+## Testing a VEN or VTN for compliant behavior on enumerated values
 
-The VTN being tested, to be compliant, should reject objects that have incorrect enumerated values, and, it should not produce objects with incorrect enumerated values.
+At the high level testing whether a VEN or VTN is correctly handling the enumerated values requires correct data validation.
 
-Therefore - compatibility tests to ensure that behavior should
+<diagrams-plantuml output-file="img/overviewEnumerationComplianceTesting.png" tpng>
+@startuml
 
-1. POST and UPDATE methods - For each of the enumerated tables - the tests sends objects containing legitimate values -- RESULT is success code, and returned object also validates
-2. POST and UPDATE methods - The tests send objects with bad values but match the correct data type -- RESULT is the correct failure code
-3. POST and UPDATE methods - The tests send objects with legitimate values but with too many items -- RESULT is the correct failure code
-4. POST and UPDATE methods - The tests send objects with incorrect data type  -- RESULT is the correct failure code
+    title "Figure 1. Testing VTN compliance with valid or invalid enumerated data"
 
-All objects sent by the VTN to the test suite must be validated.
+    "VTN Test" --> "VTN Under Test" : Make test request
+    "VTN Under Test" --> "VTN Under Test" : Validates data
+    "VTN Under Test" --> "VTN Test" : Makes response
 
-## Testing a VEN for compliant behavior on enumerated values
+@enduml
+</diagrams-plantuml>
 
-The VEN being tested, to be compliant, should reject objects that have incorrect enumerated values, and, it should not produce objects with incorrect enumerated values.
+This diagram shows the VTN Test suite validating a VTN being tested for compliance.  A similar diagram can be drawn for the VEN Test suite and a VEN being tested for compliance.
 
-Therefore - compatibility tests to ensure that behavior should
+In both cases, a compliant VEN or VTN will reject objects that have incorrect values in enumerated fields, and accept objects that have correct values in those fields.
 
-1. POST and UPDATE methods - For each of the enumerated tables - the VEN can correctly send objects containing legitimate values -- RESULT is that the VEN sends it, the VTN validates it, and returns a success code, and returned object also validates
-2. POST and UPDATE methods - The VEN fails to send objects with bad values but match the correct data type -- RESULT is that the request doesn't make it out of the VEN
-3. POST and UPDATE methods - The VEN fails to send objects with legitimate values but with too many items -- RESULT is that the request doesn't make it out of the VEN
-4. POST and UPDATE methods - The VEN fails to send objects with incorrect data type  -- RESULT is that the request doesn't make it out of the VEN
+The test suite must validate on every API endpoint.
 
-All objects received by from the VTN must be validated.
+<diagrams-plantuml output-file="img/validatingEnumeratedValuesOnEndpoints.png" tpng>
+@startuml
 
+    title "Figure 2. For each API endpoint, test valid enumerated values"
 
+    [vtnTest]
+    
+    component VTN {
+        port searchAllEvents
+        port createEvent
+        port searchEventsByID
+        port updateEvent
+        port deleteEvent
+        
+        component dataValidator
+    }
+    vtnTest --> searchAllEvents
+    searchAllEvents --> vtnTest
+    searchAllEvents <--> dataValidator
+    
+    vtnTest --> createEvent
+    createEvent --> vtnTest
+    createEvent <--> dataValidator
+    
+    vtnTest --> searchEventsByID
+    searchEventsByID --> vtnTest
+    searchEventsByID <--> dataValidator
+    
+    vtnTest --> updateEvent
+    updateEvent --> vtnTest
+    updateEvent <--> dataValidator
+    
+    vtnTest --> deleteEvent
+    deleteEvent --> vtnTest
+    deleteEvent <--> dataValidator
+    
+@enduml
+</diagrams-plantuml>
 
+This only lists the endpoints for the `/events` endpoints.  The same is true for all other groups of endpoints.
 
+Put another way - 
+
+* For each API endpoint
+    * Identify the object & enumerated fields in that object
+        * For each enumeration _type_
+            * Send valid data
+            * Send valid data but too many values
+            * Send data that matches the correct type but is incorrect range
+            * Send data with incorrect type
+
+There are four clusters of data to test for each enumeration.  For example consider the SIMPLE payload:
+
+```yaml
+valid:
+    - type: SIMPLE
+      values: [ 0 ]
+    - type: SIMPLE
+      values: [ 1 ]
+    - type: SIMPLE
+      values: [ 2 ]
+    - type: SIMPLE
+      values: [ 3 ]
+tooMany:
+    - type: SIMPLE
+      values: [ 0, 1, 2, 3 ]
+outOfRange:
+    - type: SIMPLE
+      values: [ 999 ]
+    - type: SIMPLE
+      values: [ 4 ]
+    - type: SIMPLE
+      values: [ 1.4 ]
+    - type: SIMPLE
+      values: [ 2.5 ]
+    - type: SIMPLE
+      values: [ -1 ]
+    - type: SIMPLE
+      values: [ -2 ]
+    - type: SIMPLE
+      values: [ -3 ]
+incorrectType:
+    - type: SIMPLE
+      values: [ '0' ]
+    - type: SIMPLE
+      values: [ '1' ]
+    - type: SIMPLE
+      values: [ '2' ]
+    - type: SIMPLE
+      values: [ '3' ]
+    - type: SIMPLE
+      values: [ 'three' ]
+    - type: SIMPLE
+      values: [ 'five' ]
+```
+
+A valid SIMPLE payload is a `values` array with a single integer with values between 0 and 3 inclusive.
+
+The values shown here are representative incorrect and correct values.

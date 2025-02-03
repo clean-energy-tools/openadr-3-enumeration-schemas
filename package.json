@@ -4,9 +4,11 @@
   "main": "index.js",
   "scripts": {
     "build:all": "npx npm-run-all build:impl build:testing build:extend",
+    "build:mermaid-images": "node scripts/build-mermaid-images.mjs",
     "build:impl": "npx pdf-document-maker --template-header templates/impl-header.html --height-header 20mm --template-footer templates/impl-footer.html --height-footer 20mm --document-dir documents --pdf-output PDF --html-output out --title 'Implementation for utilizing enumeration schemas in the OpenADR RI' --format A4 RI-Implementation.md",
     "build:testing": "npx pdf-document-maker --template-header templates/testing-header.html --height-header 20mm --template-footer templates/testing-footer.html --height-footer 20mm --document-dir documents --pdf-output PDF --html-output out --title 'RI testing that enumerated values are correct' --format A4 RI-Testing-Enumerated-Values.md",
     "build:extend": "npx pdf-document-maker --template-header templates/extend-header.html --height-header 20mm --template-footer templates/extend-footer.html --height-footer 20mm --document-dir documents --pdf-output PDF --html-output out --title 'Considering extensions to enumeration tables using Schema files' --format A4 Extensions-Enumerations.md",
+    "watch:mermaid": "npx nodemon -e mmd --watch documents/img --exec npm run build:mermaid-images",
     "watch:impl": "npx nodemon -e less,md,css,html,png,mmd --watch documents/RI-Implementation.md --exec npm run build:impl",
     "watch:testing": "npx nodemon -e less,md,css,html,png,mmd --watch documents/RI-Testing-Enumerated-Values.md --exec npm run build:testing",
     "watch:extend": "npx nodemon -e less,md,css,html,png,mmd --watch documents/Extensions-Enumerations.md --exec npm run build:extend",
@@ -27,6 +29,7 @@
   "dependencies": {
     "@akashacms/pdf-document-maker": "^1.0.1",
     "@compodoc/live-server": "^1.2.3",
+    "@mermaid-js/mermaid-cli": "^11.4.2",
     "nodemon": "^3.1.9",
     "npm-run-all": "^4.1.5"
   }
