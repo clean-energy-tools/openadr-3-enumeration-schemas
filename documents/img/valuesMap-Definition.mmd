@@ -1,0 +1,16 @@
+classDiagram
+
+    valuesMap --> valuesMapItem
+    valuesMapItem --> valuesMapValueItem : values contains
+    class valuesMap {
+    }
+    
+    class valuesMapItem {
+        String type
+        Object[] values
+    }
+
+    note for valuesMapValueItem "This is anyOf number, string, boolean, or Point"
+    class valuesMapValueItem {
+
+    }
